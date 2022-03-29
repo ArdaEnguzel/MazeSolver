@@ -1,0 +1,145 @@
+class Maze():
+    def __init__(self,maze):
+        self.total=0
+        self.length=0
+        self.chars=""
+        if len(maze)<=3:
+            raise Exception("InvalidMazeException")
+        for lists in maze:
+            if len(lists)<3:
+                raise Exception("InvalidMazeException")
+            else:
+                self.length+=len(lists)
+                if self.length%len(lists)!=0: raise Exception("InvalidMazeException")
+            for x in lists:
+                if x not in ["X","O","E","S"]:
+                    raise Exception("InvalidMazeException")
+                if x=="S":
+                    self.total+=1
+                    self.chars+=x
+                    start_index= (maze.index(lists),lists.index(x))  
+                    if 0 not in start_index and len(maze)-1 not in start_index and len(lists) not in start_index:
+                        raise Exception("InvalidMazeException")
+                if x=="E":
+                    self.total+=1
+                    self.chars+=x
+                    end_index=(maze.index(lists),lists.index(x))
+                    if len(lists)-1 not in end_index and 0 not in end_index and len(maze)-1 not in end_index:
+                        raise Exception("InvalidMazeException")
+        if self.total>2:
+            raise Exception("InvalidMazeException")
+        if self.chars!="ES" and self.chars!="SE":
+            raise Exception("InvalidMazeException")           
+        self.maze=maze   
+        self.start_index=start_index
+        self.end_index=end_index
+    def get_start(self):
+        return self.start_index
+    def get_exit(self):
+        return  self.end_index
+    def __getitem__(self,i):
+        return self.maze[i]     
+    def __len__(self):
+        return len(self.maze)
+class Stack():
+    def __init__(self):
+           self._data = []  
+    def __len__(self):
+           return len(self._data)
+    def is_empty(self):
+           return len(self._data) == 0 
+    def push(self,e):
+            self._data.append(e) 
+    def top(self):
+            if self.is_empty():
+                 raise Exception("Stack is empty")
+            else:
+                 return self._data[-1] 
+    def pop(self):
+         if self.is_empty():
+              raise Exception("Stack is empty")
+         return self._data.pop( ) # remove last item from list
+     
+class MazeSolver():
+    def __init__(self,path):
+        self._path=open(path)
+        self._maze= self.text_to_array(path)
+        self._cellstack=Stack()
+        self._explored=[] 
+    def text_to_array(self,path):
+        file=open(path)
+        content=[[x for x in line.rstrip("\n")]for line in file.readlines()] 
+        return Maze(content)
+    def get_a_neighbor(self,x,y,maze):
+        if x<0 or y<0 or y>=len(maze[0]) or x>= len(maze):
+            return False
+        if maze[x][y]=="O" or maze[x][y]=="E":
+           return x,y
+        return False
+    def binary_search(self,arr,low,high,x): 
+        if high>=low:
+           mid=(high+low)//2
+           if arr[mid]==x:
+              return True
+           elif arr[mid][0]>x[0] or  arr[mid][0]==x[0] and arr[mid][1]>x[1]:
+              return self.binary_search(arr, low, mid-1, x)
+           elif arr[mid][0]<x[0] or arr[mid][0]==x[0] and arr[mid][1]<x[1]:
+              return self.binary_search(arr,mid+1,high,x)
+        else:return False
+    def binary_insert(self,arr,low,high,x):  
+        if high>=low:
+           mid=(high+low)//2
+           if x<arr[0]:arr.insert(0,x)
+           try:
+              if arr[mid]<x and arr[mid+1]>x:
+                 arr.insert(mid+1,x)
+           except IndexError:
+                 arr.insert(len(arr),x)
+           if arr[mid][0]>x[0] or  (arr[mid][0]==x[0] and arr[mid][1]>x[1]):
+              return self.binary_insert(arr, low, mid-1, x)
+           elif arr[mid][0]<x[0] or arr[mid][0]==x[0] and arr[mid][1]<x[1]:
+              return self.binary_insert(arr,mid+1,high,x)
+    def solve_maze(self):
+        self._cellstack.push(self._maze.get_start())
+        self._explored.append(self._maze.get_start())
+        while self._cellstack.is_empty()==False:
+            a=0
+            check=self._cellstack.top()
+            x,y=check[0],check[1]
+            if self._maze[x][y]=="E":
+                output_path=[]
+                while self._cellstack.is_empty()==False:
+                    output_path.append(self._cellstack.pop())
+                output_path.reverse()
+                return f'{output_path}' + '\n' + f"where {self._maze.get_start()} is start and {self._maze.get_exit()} is the end cell"
+            if type(self.get_a_neighbor(x-1,y,self._maze))==tuple:
+                if a==0:
+                   a_tuple=self.get_a_neighbor(x-1,y,self._maze)
+                   if not self.binary_search(self._explored,0,len(self._explored)-1, a_tuple):
+                      self.binary_insert(self._explored,0,len(self._explored)-1,a_tuple)
+                      self._cellstack.push(a_tuple)
+                      self._explored.append(a_tuple)
+                      a+=1         
+            if type(self.get_a_neighbor(x,y+1,self._maze))==tuple: 
+                if a==0:
+                   a_tuple=self.get_a_neighbor(x,y+1,self._maze)
+                   if not self.binary_search(self._explored,0,len(self._explored)-1, a_tuple):
+                       self.binary_insert(self._explored,0,len(self._explored)-1,a_tuple)
+                       self._cellstack.push(a_tuple)
+                       a+=1            
+            if type(self.get_a_neighbor(x+1,y,self._maze))==tuple:  
+                if a==0:
+                       a_tuple=self.get_a_neighbor(x+1,y,self._maze)
+                       if not self.binary_search(self._explored,0,len(self._explored)-1, a_tuple):
+                          self.binary_insert(self._explored,0,len(self._explored)-1,a_tuple)
+                          self._cellstack.push(a_tuple)
+                          a+=1         
+            if type(self.get_a_neighbor(x,y-1,self._maze))==tuple:
+                if a==0:
+                    a_tuple=self.get_a_neighbor(x,y-1,self._maze)
+                    if not self.binary_search(self._explored,0,len(self._explored)-1, a_tuple):
+                       self.binary_insert(self._explored,0,len(self._explored)-1,a_tuple)
+                       self._cellstack.push(a_tuple)  
+                       a+=1               
+            if a==0:self._cellstack.pop()   
+        return [-1,-1]     
